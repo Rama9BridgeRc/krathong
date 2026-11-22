@@ -94,7 +94,14 @@ th{color:var(--accent);font-weight:500;font-size:13px;white-space:nowrap}
 td.wish{max-width:340px;color:#fff1cf;line-height:1.5;word-break:break-word}
 td.time{font-size:12px;color:var(--dim);white-space:nowrap}
 
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#121952;border:1px solid var(--accent);color:#fff;padding:11px 22px;border-radius:999px;font-size:14px;opacity:0;visibility:hidden;transition:.3s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+/* Custom Confirmation Dialog */
+.modal-overlay{position:fixed;inset:0;background:rgba(3,5,22,.74);display:grid;place-items:center;padding:16px;z-index:120}
+.modal-box{max-width:420px;width:100%;text-align:center}
+.modal-box h3{font-size:20px;margin-bottom:8px}
+.modal-box p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;justify-content:center;margin-top:16px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#121952;border:1px solid var(--accent);color:#fff;padding:11px 22px;border-radius:999px;font-size:14px;opacity:0;visibility:hidden;transition:.3s;z-index:130;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .toast.show{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -261,6 +268,20 @@ td.time{font-size:12px;color:var(--dim);white-space:nowrap}
   </main>
 
 </div>
+
+<!-- กล่องยืนยันการทำงาน (แทนที่ confirm/prompt มาตรฐาน) -->
+<div class="modal-overlay" id="confirmModal" hidden>
+  <div class="card modal-box">
+    <h3 class="gold-txt" id="modalTitle">ยืนยันการทำรายการ</h3>
+    <p id="modalDesc"></p>
+    <input class="inp" id="modalInput" type="text" placeholder="พิมพ์คำว่า CLEAR เพื่อยืนยัน" hidden style="text-align:center;letter-spacing:1px">
+    <div class="modal-actions">
+      <button class="btn ghost sm" id="modalCancel" type="button">ยกเลิก</button>
+      <button class="btn gold sm" id="modalConfirm" type="button">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -273,6 +294,37 @@ var TYPE_NAMES={leaf:'กระทงใบตอง',lotus:'กระทงด�
 
 function toast(msg){var t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show');},3200);}
 function esc(s){return String(s||'').replace(/[&<>"']/g,function(m){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];});}
+
+function openModal(opts){
+  return new Promise(function(resolve){
+    var m=$('#confirmModal'),inp=$('#modalInput'),btnOk=$('#modalConfirm'),btnNo=$('#modalCancel');
+    $('#modalTitle').textContent=opts.title||'ยืนยันการทำรายการ';
+    $('#modalDesc').textContent=opts.desc||'';
+    inp.value='';
+    inp.hidden=!opts.requireText;
+    if(opts.placeholder)inp.placeholder=opts.placeholder;
+    m.hidden=false;
+    if(opts.requireText)setTimeout(function(){inp.focus();},50);
+
+    function cleanup(val){
+      m.hidden=true;
+      btnOk.removeEventListener('click',onOk);
+      btnNo.removeEventListener('click',onNo);
+      resolve(val);
+    }
+    function onOk(){
+      if(opts.requireText&&inp.value.trim()!==opts.requireText){
+        toast('กรุณาพิมพ์คำว่า '+opts.requireText+' ให้ถูกต้อง');
+        inp.focus();
+        return;
+      }
+      cleanup(true);
+    }
+    function onNo(){cleanup(false);}
+    btnOk.addEventListener('click',onOk);
+    btnNo.addEventListener('click',onNo);
+  });
+}
 
 function apiGet(action,params){
   var url=ADMIN_CONFIG.GAS_API_URL+'?action='+encodeURIComponent(action);
@@ -427,29 +479,40 @@ function renderTable(){
   $$('[data-del]').forEach(function(btn){
     btn.addEventListener('click',function(){
       var id=btn.dataset.del;
-      if(!confirm('ต้องการลบกระทงใบนี้ใช่หรือไม่?'))return;
-      btn.disabled=true;
-      apiPost({action:'deleteKrathong',pin:PIN,id:id}).then(function(r){
-        if(r&&r.ok){
-          ITEMS=ITEMS.filter(function(x){return x.id!==id;});
-          $('#statTotal').textContent=(r.total||0).toLocaleString('th-TH');
-          if(r.floaters!=null)$('#statFloaters').textContent=(r.floaters||0).toLocaleString('th-TH');
-          renderTable();
-          toast('ลบรายการเรียบร้อยแล้ว');
-        }else{btn.disabled=false;toast('ลบไม่สำเร็จ');}
-      }).catch(function(){btn.disabled=false;toast('เชื่อมต่อไม่สำเร็จ');});
+      openModal({
+        title:'ลบรายการกระทง',
+        desc:'ต้องการลบกระทงใบนี้ออกจากหน้าจอและระบบใช่หรือไม่?'
+      }).then(function(ok){
+        if(!ok)return;
+        btn.disabled=true;
+        apiPost({action:'deleteKrathong',pin:PIN,id:id}).then(function(r){
+          if(r&&r.ok){
+            ITEMS=ITEMS.filter(function(x){return x.id!==id;});
+            $('#statTotal').textContent=(r.total||0).toLocaleString('th-TH');
+            if(r.floaters!=null)$('#statFloaters').textContent=(r.floaters||0).toLocaleString('th-TH');
+            renderTable();
+            toast('ลบรายการเรียบร้อยแล้ว');
+          }else{btn.disabled=false;toast('ลบไม่สำเร็จ');}
+        }).catch(function(){btn.disabled=false;toast('เชื่อมต่อไม่สำเร็จ');});
+      });
     });
   });
 }
 $('#searchBox').addEventListener('input',renderTable);
 
 $('#btnClearAll').addEventListener('click',function(){
-  var ans=prompt('คำเตือน: การกระทำนี้จะลบข้อมูลกระทงทั้งหมดในชีต (เหมาะสำหรับล้างข้อมูลทดสอบก่อนเปิดงานจริง)\n\nพิมพ์คำว่า CLEAR เพื่อยืนยัน:');
-  if(ans!=='CLEAR')return;
-  apiPost({action:'clearAllKrathongs',pin:PIN,confirm:'CLEAR'}).then(function(r){
-    if(r&&r.ok){ITEMS=[];$('#statTotal').textContent='0';$('#statFloaters').textContent='0';renderTable();toast('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว');}
-    else toast((r&&r.message)||'ไม่สำเร็จ');
-  }).catch(function(){toast('เชื่อมต่อไม่สำเร็จ');});
+  openModal({
+    title:'ล้างข้อมูลกระทงทั้งหมด',
+    desc:'คำเตือน: การกระทำนี้จะลบข้อมูลกระทงทั้งหมดในชีต (เหมาะสำหรับล้างข้อมูลทดสอบก่อนเปิดงานจริง) พิมพ์คำว่า CLEAR เพื่อยืนยัน',
+    requireText:'CLEAR',
+    placeholder:'พิมพ์คำว่า CLEAR'
+  }).then(function(ok){
+    if(!ok)return;
+    apiPost({action:'clearAllKrathongs',pin:PIN,confirm:'CLEAR'}).then(function(r){
+      if(r&&r.ok){ITEMS=[];$('#statTotal').textContent='0';$('#statFloaters').textContent='0';renderTable();toast('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว');}
+      else toast((r&&r.message)||'ไม่สำเร็จ');
+    }).catch(function(){toast('เชื่อมต่อไม่สำเร็จ');});
+  });
 });
 
 /* ---------- Settings Form ---------- */
