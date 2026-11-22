@@ -844,7 +844,7 @@ qrcode.stringToBytesFuncs["UTF-8"]=function(e){for(var t=[],n=0;n<e.length;n++){
     <p class="closedmsg glass" id="closedMsg" hidden></p>
   </main>
   <p class="foot" id="foot"></p>
-  <div class="counter glass" id="counter" hidden>จำนวนกระทงที่ลอยแล้ว<b id="total">0</b>ใบ<span
+  <div class="counter glass" id="counter" hidden>ลอยแล้ว<b id="total">0</b>ใบ<span class="sep">·</span>ผู้ลอย<b id="floaters">0</b>คน</div>
   <button class="snd" id="btnSound" type="button" aria-label="เปิด/ปิดเสียงเพลง" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12"/></svg></button>
 
   <div class="sheetwrap" id="sheetWrap" aria-hidden="true">
@@ -899,8 +899,10 @@ qrcode.stringToBytesFuncs["UTF-8"]=function(e){for(var t=[],n=0;n<e.length;n++){
   </aside>
   <aside class="dcount glass">
     <div class="dnums">
-      <div><span class="l">จำนวนกระทงที่ลอยแล้ว</span><b id="count">0</b><span class="u">ใบ</span></div>
+      <div><span class="l">ลอยแล้ว</span><b id="count">0</b><span class="u">ใบ</span></div>
       <div class="dsep"></div>
+      <div><span class="l">ผู้ลอย</span><b id="dispFloaters">0</b><span class="u">คน</span></div>
+    </div>
     <p class="dstat" id="stat"><i></i><span>กำลังเชื่อมต่อ…</span></p>
   </aside>
   <aside class="banner glass" id="banner" aria-live="polite"><p class="e">กระทงใบใหม่ลอยแล้ว</p><p class="n grad-text" id="bnName"></p><p class="w" id="bnWish"></p></aside>
